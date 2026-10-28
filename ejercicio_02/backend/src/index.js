@@ -22,28 +22,40 @@ let reservaUsuario = {
   itemsReservados: [] // Ejemplo: [{ id: 101, cantidad: 2 }]
 };
 
+function calcularTotal() {
+  const total = reservaUsuario.itemsReservados.reduce((acumulado, item) => {
+    const plato = menuInventario.find(p => p.id === item.id);
+
+    return acumulado + (plato ? plato.precio * item.cantidad : 0);
+  }, 0);
+
+  return Number(total.toFixed(2));
+}
+
+function obtenerReserva() {
+  return {
+    saldo: Number(reservaUsuario.saldo.toFixed(2)),
+    itemsReservados: reservaUsuario.itemsReservados,
+    total: calcularTotal()
+  };
+}
+
 // ==========================================
 // ENDPOINT 1: GET /api/menu
 // Propósito: Devuelve la lista completa de alimentos disponibles hoy.
 // ==========================================
+
+ // ENDPOINT 1: GET /api/menu
 app.get('/api/menu', (req, res) => {
   res.json(menuInventario);
 });
 
-// (Opcional complementario para que tus compañeros puedan avanzar)
-// GET /api/reserva: Devuelve los detalles de la reserva activa y saldo.
+// ENDPOINT 2: GET /api/reserva
 app.get('/api/reserva', (req, res) => {
-  const totalReserva = reservaUsuario.itemsReservados.reduce((acc, item) => {
-    const plato = menuInventario.find(p => p.id === item.id);
-    return acc + (plato ? plato.precio * item.cantidad : 0);
-  }, 0);
-
-  res.json({
-    saldo: reservaUsuario.saldo,
-    itemsReservados: reservaUsuario.itemsReservados,
-    total: Number(totalReserva.toFixed(2))
-  });
+  res.json(obtenerReserva());
 });
+
+
 
 // ==========================================
 // ENDPOINT 3: POST /api/reserva/agregar
@@ -90,6 +102,96 @@ app.post('/api/reserva/agregar', (req, res) => {
       itemsReservados: reservaUsuario.itemsReservados,
       total: Number(totalReserva.toFixed(2))
     },
+    menuActualizado: menuInventario
+  });
+});
+
+app.put('/api/reserva/actualizar-porciones/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const nuevaCantidad = Number(req.body.cantidad);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({
+      mensaje: "El ID del alimento no es válido."
+    });
+  }
+
+  if (!Number.isInteger(nuevaCantidad) || nuevaCantidad < 1) {
+    return res.status(400).json({
+      mensaje: "La cantidad debe ser un entero mayor que cero."
+    });
+  }
+
+  const itemReservado = reservaUsuario.itemsReservados.find(i => i.id === id);
+
+  if (!itemReservado) {
+    return res.status(404).json({
+      mensaje: "El alimento no está en la reserva."
+    });
+  }
+
+  const plato = menuInventario.find(p => p.id === id);
+
+  if (!plato) {
+    return res.status(404).json({
+      mensaje: "El alimento no existe en el menú."
+    });
+  }
+
+  const diferencia = nuevaCantidad - itemReservado.cantidad;
+  const nuevoTotal = calcularTotal() + diferencia * plato.precio;
+
+  if (nuevoTotal > reservaUsuario.saldo) {
+    return res.status(400).json({
+      mensaje: "Saldo insuficiente para esta cantidad"
+    });
+  }
+
+  if (diferencia > 0 && plato.stock < diferencia) {
+    return res.status(400).json({
+      mensaje: "Stock insuficiente"
+    });
+  }
+
+  plato.stock -= diferencia;
+  itemReservado.cantidad = nuevaCantidad;
+
+  return res.json({
+    mensaje: "Porciones actualizadas exitosamente",
+    reserva: obtenerReserva(),
+    menuActualizado: menuInventario
+  });
+});
+
+app.delete('/api/reserva/eliminar/:id', (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({
+      mensaje: "El ID del alimento no es válido."
+    });
+  }
+
+  const indice = reservaUsuario.itemsReservados.findIndex(i => i.id === id);
+
+  if (indice === -1) {
+    return res.status(404).json({
+      mensaje: "El alimento no está en la reserva."
+    });
+  }
+
+  const itemEliminado = reservaUsuario.itemsReservados[indice];
+  const plato = menuInventario.find(p => p.id === id);
+
+  if (plato) {
+    plato.stock += itemEliminado.cantidad;
+  }
+
+  reservaUsuario.itemsReservados.splice(indice, 1);
+
+  return res.json({
+    mensaje: "Plato eliminado de la reserva",
+    reserva: obtenerReserva(),
     menuActualizado: menuInventario
   });
 });
