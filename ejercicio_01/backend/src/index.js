@@ -4,24 +4,41 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
 app.use(cors());
 app.use(express.json());
 
 // Generar número aleatorio inicial entre 1 y 100[cite: 2]
 let numeroOculto = Math.floor(Math.random() * 100) + 1;
 let intentosFallidos = 0;
+let juegoTerminado = false;
 
 // Ruta para adivinar el número[cite: 2]
 app.post('/guess', (req, res) => {
   const { numero } = req.body;
-  const intento = Number(numero);
 
-  if (!intento || intento < 1 || intento > 100) {
-    return res.status(400).json({ mensaje: 'Por favor ingresa un número válido entre 1 y 100.' });
-  }
+if (
+  numero === undefined ||
+  numero === null ||
+  String(numero).trim() === '' ||
+  !Number.isInteger(Number(numero)) ||
+  Number(numero) < 1 ||
+  Number(numero) > 100
+) {
+  return res.status(400).json({
+    mensaje: 'Por favor ingresa un número entero válido entre 1 y 100.'
+  });
+}
+
+const intento = Number(numero);    
+
+if (juegoTerminado) {
+  return res.status(400).json({
+    mensaje: 'El juego terminó. Reinicia para jugar nuevamente.'
+  });
+}
 
   if (intento === numeroOculto) {
+    juegoTerminado = true;
     return res.json({ resultado: 'correcto', mensaje: '¡Felicidades! Adivinaste el número.' });
   } else if (intento < numeroOculto) {
     intentosFallidos++;
@@ -36,6 +53,7 @@ app.post('/guess', (req, res) => {
 app.post('/reset', (req, res) => {
   numeroOculto = Math.floor(Math.random() * 100) + 1;
   intentosFallidos = 0;
+  juegoTerminado = false;
   res.json({ mensaje: 'Se ha generado un nuevo número aleatorio. ¡A jugar de nuevo!' });
 });
 
