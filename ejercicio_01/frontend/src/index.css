@@ -1,4 +1,24 @@
+:root {
+  --ink: #1d2145;
+  --muted: #5d6385;
+  --paper: #ffffff;
+  --bg: #e9edff;
+  --primary: #3d4cd8;
+  --primary-dark: #2f3bb0;
+  --mayor: #2f6fed;
+  --menor: #d9480f;
+  --ok: #1a8f5f;
+  --display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --body: 'Figtree', system-ui, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  line-height: 1.5;
 }

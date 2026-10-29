@@ -40,12 +40,13 @@ function obtenerReserva() {
   };
 }
 
-// ==========================================
+// Compara dinero en centavos para evitar errores de decimales (ej: 25.000000000000004 > 25)
+function superaSaldo(total) {
+  return Math.round(total * 100) > Math.round(reservaUsuario.saldo * 100);
+}
+
 // ENDPOINT 1: GET /api/menu
 // Propósito: Devuelve la lista completa de alimentos disponibles hoy.
-// ==========================================
-
- // ENDPOINT 1: GET /api/menu
 app.get('/api/menu', (req, res) => {
   res.json(menuInventario);
 });
@@ -63,7 +64,12 @@ app.get('/api/reserva', (req, res) => {
 // ==========================================
 app.post('/api/reserva/agregar', (req, res) => {
   const { alimentoId, cantidad } = req.body;
-  const cantSolicitada = Number(cantidad) || 1;
+  const cantSolicitada = cantidad === undefined ? 1 : Number(cantidad);
+
+  // La cantidad debe ser un entero positivo (si no, un número negativo "regalaría" stock)
+  if (!Number.isInteger(cantSolicitada) || cantSolicitada < 1) {
+    return res.status(400).json({ mensaje: "La cantidad debe ser un entero mayor que cero." });
+  }
 
   // Buscar el alimento en el inventario general
   const plato = menuInventario.find(p => p.id === Number(alimentoId));
@@ -75,6 +81,11 @@ app.post('/api/reserva/agregar', (req, res) => {
   // Validación estricta de stock: Si el stock es menor a lo solicitado, responde 400 Bad Request
   if (plato.stock < cantSolicitada) {
     return res.status(400).json({ mensaje: "Stock insuficiente" });
+  }
+
+  // Validación de saldo: el total de la reserva no puede superar el saldo del usuario
+  if (superaSaldo(calcularTotal() + plato.precio * cantSolicitada)) {
+    return res.status(400).json({ mensaje: "Saldo insuficiente para esta cantidad" });
   }
 
   // Buscar si ya está en la reserva del usuario para actualizar o agregar
@@ -89,19 +100,9 @@ app.post('/api/reserva/agregar', (req, res) => {
   // Descontar temporalmente del stock del menú general
   plato.stock -= cantSolicitada;
 
-  // Calcular el total actual de la reserva
-  const totalReserva = reservaUsuario.itemsReservados.reduce((acc, item) => {
-    const p = menuInventario.find(prod => prod.id === item.id);
-    return acc + (p ? p.precio * item.cantidad : 0);
-  }, 0);
-
   return res.json({
     mensaje: "Plato agregado exitosamente a la reserva",
-    reserva: {
-      saldo: reservaUsuario.saldo,
-      itemsReservados: reservaUsuario.itemsReservados,
-      total: Number(totalReserva.toFixed(2))
-    },
+    reserva: obtenerReserva(),
     menuActualizado: menuInventario
   });
 });
@@ -141,7 +142,7 @@ app.put('/api/reserva/actualizar-porciones/:id', (req, res) => {
   const diferencia = nuevaCantidad - itemReservado.cantidad;
   const nuevoTotal = calcularTotal() + diferencia * plato.precio;
 
-  if (nuevoTotal > reservaUsuario.saldo) {
+  if (superaSaldo(nuevoTotal)) {
     return res.status(400).json({
       mensaje: "Saldo insuficiente para esta cantidad"
     });

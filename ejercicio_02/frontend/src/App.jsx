@@ -59,20 +59,25 @@ function App() {
   return (
     <>
       <PanelSuperior saldo={reserva.saldo} total={reserva.total} />
-      <Container style={{ paddingTop: '90px' }}>
-                {/* Captura de errores: se muestra cuando una regla de negocio falla */}
+      <Container className="fd-main">
+        {/* Captura de errores: se muestra cuando una regla de negocio falla */}
         {error && (
-          <UncontrolledAlert color="warning" toggle={() => setError(null)}>
+          <UncontrolledAlert color="warning" className="fd-aviso" toggle={() => setError(null)}>
             ⚠️ {error}
           </UncontrolledAlert>
         )}
         <Row>
           <Col md="8">
-            <h3 className="mb-3">Menú del Día {cargando && <Spinner size="sm" color="primary" />}</h3>
+            <div className="fd-seccion">
+              <h2 className="fd-seccion__titulo">
+                Menú del Día {cargando && <Spinner size="sm" color="success" />}
+              </h2>
+              <p className="fd-seccion__texto">Porciones limitadas: reserva antes de que se agoten.</p>
+            </div>
             <MenuDelDia menu={menu} onAgregar={manejarAgregar} cargando={cargando} />
           </Col>
           <Col md="4">
-            <div style={{ position: 'sticky', top: '90px' }}>
+            <div className="fd-lateral">
               <BandejaReserva
                 items={reserva.itemsReservados}
                 menu={menu}

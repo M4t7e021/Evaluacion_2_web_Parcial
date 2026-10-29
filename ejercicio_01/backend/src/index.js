@@ -7,12 +7,12 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Generar número aleatorio inicial entre 1 y 100[cite: 2]
+// Generar número aleatorio inicial entre 1 y 100
 let numeroOculto = Math.floor(Math.random() * 100) + 1;
 let intentosFallidos = 0;
 let juegoTerminado = false;
 
-// Ruta para adivinar el número[cite: 2]
+// Ruta para adivinar el número
 app.post('/guess', (req, res) => {
   const { numero } = req.body;
 
@@ -49,7 +49,7 @@ if (juegoTerminado) {
   }
 });
 
-// Ruta para reiniciar el juego y generar un nuevo número[cite: 2]
+// Ruta para reiniciar el juego y generar un nuevo número
 app.post('/reset', (req, res) => {
   numeroOculto = Math.floor(Math.random() * 100) + 1;
   intentosFallidos = 0;
