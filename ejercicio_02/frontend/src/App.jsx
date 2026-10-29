@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Spinner, UncontrolledAlert } from 'reactstrap';
 import PanelSuperior from './components/PanelSuperior';
 import MenuDelDia from './components/MenuDelDia';
-import { obtenerMenu, obtenerReserva, agregarAlimento } from './services/api';
+import BandejaReserva from './components/BandejaReserva';
+import { obtenerMenu, obtenerReserva, agregarAlimento, actualizarPorciones, eliminarAlimento,} from './services/api';
 
 function App() {
   const [menu, setMenu] = useState([]);
@@ -26,29 +27,43 @@ function App() {
     cargarDatos();
   }, []);
 
-  // Endpoint 3: el backend devuelve la reserva y el menú ya actualizados
-  const manejarAgregar = async (alimentoId) => {
+
+    // Ejecuta cualquier acción contra la API con el mismo flujo:
+  // cargando -> llamar -> guardar respuesta -> (si falla) mostrar error -> quitar cargando
+  const ejecutarAccion = async (accion) => {
     setCargando(true);
     setError(null);
     try {
-      const data = await agregarAlimento(alimentoId, 1);
+      const data = await accion();
       setReserva(data.reserva);
       setMenu(data.menuActualizado);
     } catch (err) {
-      setError(err.message);
+      setError(err.message); // aquí llega "Stock insuficiente" o "Saldo insuficiente..."
     } finally {
       setCargando(false);
     }
   };
 
+  // Endpoint 3
+  const manejarAgregar = (alimentoId) =>
+    ejecutarAccion(() => agregarAlimento(alimentoId, 1));
+
+  // Endpoint 4
+  const manejarCambiarPorciones = (id, nuevaCantidad) =>
+    ejecutarAccion(() => actualizarPorciones(id, nuevaCantidad));
+
+  // Endpoint 5
+  const manejarEliminar = (id) =>
+    ejecutarAccion(() => eliminarAlimento(id));
+
   return (
     <>
       <PanelSuperior saldo={reserva.saldo} total={reserva.total} />
       <Container style={{ paddingTop: '90px' }}>
-        {/* INTEGRANTE 4: reemplazar/mejorar este bloque con el manejo de errores definitivo */}
+                {/* Captura de errores: se muestra cuando una regla de negocio falla */}
         {error && (
-          <UncontrolledAlert color="warning" key={error + Date.now()}>
-            {error}
+          <UncontrolledAlert color="warning" toggle={() => setError(null)}>
+            ⚠️ {error}
           </UncontrolledAlert>
         )}
         <Row>
@@ -57,7 +72,15 @@ function App() {
             <MenuDelDia menu={menu} onAgregar={manejarAgregar} cargando={cargando} />
           </Col>
           <Col md="4">
-            {/* INTEGRANTE 4: aquí va la bandeja de reserva (ListGroup + ButtonGroup) */}
+            <div style={{ position: 'sticky', top: '90px' }}>
+              <BandejaReserva
+                items={reserva.itemsReservados}
+                menu={menu}
+                onCambiarPorciones={manejarCambiarPorciones}
+                onEliminar={manejarEliminar}
+                cargando={cargando}
+              />
+            </div>
           </Col>
         </Row>
       </Container>
