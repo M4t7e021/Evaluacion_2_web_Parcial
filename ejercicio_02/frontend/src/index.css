@@ -154,3 +154,14 @@ body { margin: 0; background: var(--fd-bg); }
   font-size: 1.1rem;
 }
 .ticket__total strong { font: 800 1.5rem var(--fd-display); }
+
+/* ---------- Temporizador y confirmación de la reserva ---------- */
+.temporizador { margin-bottom: 0.75rem; padding: 0.6rem 0.75rem; background: var(--fd-mint); border-radius: 10px; }
+.temporizador__fila { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; font-weight: 600; }
+.temporizador__reloj { font: 800 1rem var(--fd-display); font-variant-numeric: tabular-nums; }
+.temporizador__barra { height: 5px; margin-top: 0.4rem; background: rgba(21, 48, 42, 0.12); }
+.temporizador__barra .progress-bar { background: var(--fd-pine); transition: width 1s linear; }
+.temporizador--urgente { background: #fde3dc; }
+.temporizador--urgente .progress-bar { background: var(--fd-chili); }
+
+.ticket__saldo { margin-top: 0.25rem; font-size: 0.9rem; color: var(--fd-muted); text-align: right; }

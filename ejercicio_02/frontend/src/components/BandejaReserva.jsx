@@ -1,9 +1,21 @@
 import { ListGroup, ListGroupItem, ButtonGroup, Button } from 'reactstrap';
+import TemporizadorReserva from './TemporizadorReserva';
 
 // Carrito lateral. No llama a la API directamente: recibe funciones por props
 // y solo se encarga de DIBUJAR la lista y avisar cuando el usuario hace clic.
 // Visualmente es un "ticket" de comedor: nombre ........ subtotal.
-function BandejaReserva({ items, menu, onCambiarPorciones, onEliminar, cargando }) {
+function BandejaReserva({
+  items,
+  menu,
+  saldo,
+  finReserva,
+  duracionSegundos,
+  onCambiarPorciones,
+  onEliminar,
+  onConfirmar,
+  onExpirar,
+  cargando,
+}) {
   // El backend solo guarda { id, cantidad }; el nombre y precio los buscamos en el menú
   const total = items.reduce((acum, item) => {
     const plato = menu.find((p) => p.id === item.id);
@@ -18,6 +30,15 @@ function BandejaReserva({ items, menu, onCambiarPorciones, onEliminar, cargando 
         <p className="ticket__vacio">🍽️ Aún no has añadido platos a tu reserva.</p>
       ) : (
         <>
+          {/* Cuenta regresiva: al llegar a 0 la reserva se cierra */}
+          {finReserva && (
+            <TemporizadorReserva
+              finReserva={finReserva}
+              duracionSegundos={duracionSegundos}
+              onExpirar={onExpirar}
+            />
+          )}
+
           <ListGroup flush>
             {items.map((item) => {
               const plato = menu.find((p) => p.id === item.id);
@@ -80,6 +101,14 @@ function BandejaReserva({ items, menu, onCambiarPorciones, onEliminar, cargando 
             <span>Total</span>
             <strong>${total.toFixed(2)}</strong>
           </div>
+          <div className="ticket__saldo">
+            Saldo tras confirmar: <strong>${(saldo - total).toFixed(2)}</strong>
+          </div>
+
+          {/* Endpoint extra: confirmar reserva */}
+          <Button color="primary" block className="mt-3" disabled={cargando} onClick={onConfirmar}>
+            Confirmar reserva
+          </Button>
         </>
       )}
     </div>

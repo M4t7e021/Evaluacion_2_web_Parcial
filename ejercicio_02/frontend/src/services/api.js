@@ -39,3 +39,7 @@ export const actualizarPorciones = (id, cantidad) =>
 // Endpoint 5: DELETE /api/reserva/eliminar/:id  (Integrante 4)
 export const eliminarAlimento = (id) =>
   peticion(`/api/reserva/eliminar/${id}`, { method: 'DELETE' });
+
+// Extra: POST /api/reserva/confirmar -> cobra el total del saldo y bloquea el stock
+export const confirmarReserva = () =>
+  peticion('/api/reserva/confirmar', { method: 'POST' });

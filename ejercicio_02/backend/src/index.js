@@ -16,10 +16,14 @@ let menuInventario = [
   { id: 104, nombre: "Pasta Alfredo", precio: 6.00, stock: 10, categoria: "Fuerte" }
 ];
 
+// Tiempo máximo para completar una reserva (en segundos). Se puede cambiar con TIEMPO_RESERVA_SEG en el .env
+const TIEMPO_RESERVA_SEG = Number(process.env.TIEMPO_RESERVA_SEG) || 120;
+
 // Estado de la reserva activa del usuario y su saldo inicial
 let reservaUsuario = {
   saldo: 25.00,
-  itemsReservados: [] // Ejemplo: [{ id: 101, cantidad: 2 }]
+  itemsReservados: [], // Ejemplo: [{ id: 101, cantidad: 2 }]
+  inicio: null         // Momento (ms) en que se añadió el primer plato; null si no hay reserva activa
 };
 
 function calcularTotal() {
@@ -32,13 +36,45 @@ function calcularTotal() {
   return Number(total.toFixed(2));
 }
 
+// Segundos que le quedan a la reserva activa (null si no hay reserva)
+function segundosRestantes() {
+  if (!reservaUsuario.inicio) return null;
+  const msRestantes = reservaUsuario.inicio + TIEMPO_RESERVA_SEG * 1000 - Date.now();
+  return Math.max(0, Math.ceil(msRestantes / 1000));
+}
+
 function obtenerReserva() {
   return {
     saldo: Number(reservaUsuario.saldo.toFixed(2)),
     itemsReservados: reservaUsuario.itemsReservados,
-    total: calcularTotal()
+    total: calcularTotal(),
+    segundosRestantes: segundosRestantes(),
+    duracionSegundos: TIEMPO_RESERVA_SEG
   };
 }
+
+// Cierra la reserva activa: devuelve las porciones al stock y la vacía
+function liberarReserva() {
+  reservaUsuario.itemsReservados.forEach((item) => {
+    const plato = menuInventario.find((p) => p.id === item.id);
+    if (plato) plato.stock += item.cantidad;
+  });
+  reservaUsuario.itemsReservados = [];
+  reservaUsuario.inicio = null;
+}
+
+// Si se acabó el tiempo, la reserva se cierra y el stock vuelve al menú
+function verificarExpiracion() {
+  if (reservaUsuario.inicio && segundosRestantes() === 0) {
+    liberarReserva();
+  }
+}
+
+// Antes de atender CUALQUIER endpoint se revisa si la reserva ya expiró
+app.use('/api', (req, res, next) => {
+  verificarExpiracion();
+  next();
+});
 
 // Compara dinero en centavos para evitar errores de decimales (ej: 25.000000000000004 > 25)
 function superaSaldo(total) {
@@ -90,6 +126,11 @@ app.post('/api/reserva/agregar', (req, res) => {
 
   // Buscar si ya está en la reserva del usuario para actualizar o agregar
   const itemExistente = reservaUsuario.itemsReservados.find(i => i.id === Number(alimentoId));
+
+  // El temporizador arranca al añadir el primer plato de una reserva nueva
+  if (!reservaUsuario.inicio) {
+    reservaUsuario.inicio = Date.now();
+  }
 
   if (itemExistente) {
     itemExistente.cantidad += cantSolicitada;
@@ -190,8 +231,47 @@ app.delete('/api/reserva/eliminar/:id', (req, res) => {
 
   reservaUsuario.itemsReservados.splice(indice, 1);
 
+  // Sin platos ya no hay reserva activa, así que el temporizador se detiene
+  if (reservaUsuario.itemsReservados.length === 0) {
+    reservaUsuario.inicio = null;
+  }
+
   return res.json({
     mensaje: "Plato eliminado de la reserva",
+    reserva: obtenerReserva(),
+    menuActualizado: menuInventario
+  });
+});
+
+// ==========================================
+// ENDPOINT EXTRA: POST /api/reserva/confirmar
+// Propósito: Confirma la reserva. Descuenta el total del saldo y deja el stock
+// definitivamente bloqueado (ya no se devuelve al menú). La reserva queda vacía.
+// ==========================================
+app.post('/api/reserva/confirmar', (req, res) => {
+  if (reservaUsuario.itemsReservados.length === 0) {
+    return res.status(400).json({ mensaje: "No tienes platos en la reserva para confirmar." });
+  }
+
+  const total = calcularTotal();
+
+  if (superaSaldo(total)) {
+    return res.status(400).json({ mensaje: "Saldo insuficiente para esta cantidad" });
+  }
+
+  const resumen = reservaUsuario.itemsReservados.map((item) => {
+    const plato = menuInventario.find((p) => p.id === item.id);
+    return { nombre: plato.nombre, cantidad: item.cantidad, subtotal: Number((plato.precio * item.cantidad).toFixed(2)) };
+  });
+
+  // Se cobra y se cierra la reserva SIN devolver stock
+  reservaUsuario.saldo = Number((reservaUsuario.saldo - total).toFixed(2));
+  reservaUsuario.itemsReservados = [];
+  reservaUsuario.inicio = null;
+
+  return res.json({
+    mensaje: `¡Reserva confirmada! Se descontaron $${total.toFixed(2)} de tu saldo.`,
+    resumen,
     reserva: obtenerReserva(),
     menuActualizado: menuInventario
   });
