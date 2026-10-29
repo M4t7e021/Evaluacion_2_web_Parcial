@@ -6,3 +6,7 @@
 .guess-form button { padding: .5rem 1rem; cursor: pointer; }
 .guess-form button:disabled { cursor: not-allowed; opacity: .5; }
 .guess-form__ayuda { color: #b02a37; }
+.juego__mensaje--ganaste { color: #198754; font-size: 1.2rem; }
+.juego__vacio { color: #6c757d; }
+.juego__reiniciar { padding: .6rem 1.2rem; cursor: pointer; margin-bottom: 1rem; }
+.historial { text-align: left; display: inline-block; padding-left: 1.5rem; }
